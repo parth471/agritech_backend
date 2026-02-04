@@ -4,35 +4,41 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 
-import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class FirebaseConfig {
 
-    @Value("${firebase.config.path}")
-    private String firebasePath;
-
     @PostConstruct
     public void init() {
         try {
-            InputStream serviceAccount =
-                    new ClassPathResource(firebasePath).getInputStream();
+            String firebaseKey = System.getenv("FIREBASE_KEY");
+
+            if (firebaseKey == null || firebaseKey.isBlank()) {
+                throw new RuntimeException("FIREBASE_KEY env variable not found");
+            }
 
             FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setCredentials(
+                            GoogleCredentials.fromStream(
+                                    new ByteArrayInputStream(
+                                            firebaseKey.getBytes(StandardCharsets.UTF_8)
+                                    )
+                            )
+                    )
                     .build();
 
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
-                System.out.println("🔥 Firebase initialized");
             }
 
+            System.out.println("✅ Firebase initialized");
+
         } catch (Exception e) {
-            throw new RuntimeException("❌ Firebase initialization failed", e);
+            throw new RuntimeException("❌ Firebase init failed", e);
         }
     }
 }
